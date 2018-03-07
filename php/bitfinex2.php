@@ -17,6 +17,9 @@ class bitfinex2 extends bitfinex {
             'has' => array (
                 'CORS' => true,
                 'createOrder' => false,
+                'createMarketOrder' => false,
+                'createLimitOrder' => false,
+                'editOrder' => false,
                 'fetchMyTrades' => false,
                 'fetchOHLCV' => true,
                 'fetchTickers' => true,
@@ -224,6 +227,7 @@ class bitfinex2 extends bitfinex {
     }
 
     public function fetch_balance ($params = array ()) {
+        $this->load_markets();
         $response = $this->privatePostAuthRWallets ();
         $balanceType = $this->safe_string($params, 'type', 'exchange');
         $result = array ( 'info' => $response );
@@ -250,6 +254,7 @@ class bitfinex2 extends bitfinex {
     }
 
     public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
+        $this->load_markets();
         $orderbook = $this->publicGetBookSymbolPrecision (array_merge (array (
             'symbol' => $this->market_id($symbol),
             'precision' => 'R0',
@@ -303,6 +308,7 @@ class bitfinex2 extends bitfinex {
     }
 
     public function fetch_tickers ($symbols = null, $params = array ()) {
+        $this->load_markets();
         $tickers = $this->publicGetTickers (array_merge (array (
             'symbols' => implode (',', $this->ids),
         ), $params));
@@ -318,6 +324,7 @@ class bitfinex2 extends bitfinex {
     }
 
     public function fetch_ticker ($symbol, $params = array ()) {
+        $this->load_markets();
         $market = $this->markets[$symbol];
         $ticker = $this->publicGetTickerSymbol (array_merge (array (
             'symbol' => $market['id'],
@@ -345,6 +352,7 @@ class bitfinex2 extends bitfinex {
     }
 
     public function fetch_trades ($symbol, $since = null, $limit = 120, $params = array ()) {
+        $this->load_markets();
         $market = $this->market ($symbol);
         $request = array (
             'symbol' => $market['id'],
@@ -359,6 +367,7 @@ class bitfinex2 extends bitfinex {
     }
 
     public function fetch_ohlcv ($symbol, $timeframe = '1m', $since = null, $limit = 100, $params = array ()) {
+        $this->load_markets();
         $market = $this->market ($symbol);
         $request = array (
             'symbol' => $market['id'],
@@ -387,6 +396,21 @@ class bitfinex2 extends bitfinex {
 
     public function withdraw ($currency, $amount, $address, $tag = null, $params = array ()) {
         throw new NotSupported ($this->id . ' withdraw not implemented yet');
+    }
+
+    public function fetch_my_trades ($symbol = null, $since = null, $limit = 25, $params = array ()) {
+        $this->load_markets();
+        $market = $this->market ($symbol);
+        $request = array (
+            'symbol' => $market['id'],
+            'limit' => $limit,
+            'end' => $this->seconds (),
+        );
+        if ($since !== null)
+            $request['start'] = intval ($since / 1000);
+        $response = $this->privatePostAuthRTradesSymbolHist (array_merge ($request, $params));
+        // return $this->parse_trades($response, $market, $since, $limit); // not implemented yet for bitfinex v2
+        return $response;
     }
 
     public function nonce () {
